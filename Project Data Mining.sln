@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.572
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Project Data Mining", "Project Data Mining\Project Data Mining.csproj", "{A2210CF8-87FE-4850-98FE-A9C28572BB9B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A2210CF8-87FE-4850-98FE-A9C28572BB9B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2210CF8-87FE-4850-98FE-A9C28572BB9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2210CF8-87FE-4850-98FE-A9C28572BB9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2210CF8-87FE-4850-98FE-A9C28572BB9B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C621F845-A364-4172-B206-1AA5973887A8}
+	EndGlobalSection
+EndGlobal
