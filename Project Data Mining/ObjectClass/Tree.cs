@@ -14,6 +14,7 @@ namespace Project_Data_Mining.ObjectClass
         public string GraphVizInput;
         public readonly DataTable Dataset;
         public TreeNode Root { get; set; }
+        public static List<Attribute> AttributeCollection;
         
         public Tree(DataTable dt)
         {
@@ -177,6 +178,7 @@ namespace Project_Data_Mining.ObjectClass
                 }
             }
 
+            AttributeCollection = attributes;
             return new TreeNode(attributes[highestInformationGainIndex].Name, highestInformationGainIndex, attributes[highestInformationGainIndex], edge);
         }
 

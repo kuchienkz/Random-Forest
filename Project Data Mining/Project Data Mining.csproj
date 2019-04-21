@@ -43,6 +43,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -62,8 +63,6 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="ObjectClass\Attribute.cs" />
-    <Compile Include="ObjectClass\OLD\OLDAttribute.cs" />
-    <Compile Include="ObjectClass\OLD\OLDBranch.cs" />
     <Compile Include="ObjectClass\Forest.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -79,8 +78,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ObjectClass\OLD\OLDTree.cs" />
-    <Compile Include="ObjectClass\OLD\OLDTreeNode.cs" />
     <Compile Include="ObjectClass\Tree.cs" />
     <Compile Include="ObjectClass\TreeNode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -108,6 +105,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\bg.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -2,18 +2,23 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Threading;
 
 namespace Project_Data_Mining
 {
     public class RandomForest
     {
+        public delegate void CultivateProgress(int treeDone, double percentage);
+        public delegate void VotingProgress(int voteDone, double percentage);
+        public event CultivateProgress OnCultivateProgress;
+        public event VotingProgress OnVotingProgress;
+        public static event EventHandler OnCultivateStart;
+        public event EventHandler OnCultivateFinished;
+
         public List<Tree> Trees;
+        public List<ObjectClass.Attribute> Attributes;
         public bool IsReady { get; set; }
         public string LastVoteResult { get; private set;}
 
@@ -27,51 +32,60 @@ namespace Project_Data_Mining
 
             CountTree = jumlahTree;
             SubsampleSize = ukuranSubsample;
-
+            
             CultivateTrees(dataset).ContinueWith(delegate 
             {
                 IsReady = true;
+                OnCultivateFinished?.Invoke(this, EventArgs.Empty);
                 Console.WriteLine("FOREST READY!");
+
                 //Console.WriteLine("GraphViz: " + Trees[0].GraphVizInput);
             });
         }
         
-        public string Predict(DataRow dataInput)
+        public Task<string> Predict(DataRow dataInput)
         {
-            if (Trees.Count < CountTree)
+            return Task<string>.Factory.StartNew(() =>
             {
-                MessageBox.Show("Forest is not ready! Trees: " + Trees.Count + "/" + CountTree, "Please wait...", MessageBoxButton.OK, MessageBoxImage.Information);
-                return "";
-            }
-            List<string> votes = new List<string>();
-            foreach (var t in Trees)
-            {
-                votes.Add(t.Predict(dataInput));
-            }
+                if (Trees.Count < CountTree)
+                {
+                    MessageBox.Show("Forest is not ready! Trees: " + Trees.Count + "/" + CountTree, "Please wait...", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return "";
+                }
+                List<string> votes = new List<string>();
+                for (int i = 0; i < Trees.Count; i++)
+                {
+                    votes.Add(Trees[i].Predict(dataInput));
+                    OnVotingProgress?.Invoke(i + 1, (i + 1) / (double)Trees.Count * 100.0);
+                }
 
-            for (int i = 0; i < votes.Count; i++)
-            {
-                Console.WriteLine("Path of Tree #" + (i + 1) + ": " + votes[i]);
-                votes[i] = votes[i].Split(new string[]{ "-->", "--" }, StringSplitOptions.None).Last().Trim(' ');
-            }
+                for (int i = 0; i < votes.Count; i++)
+                {
+                    Console.WriteLine("Path of Tree #" + (i + 1) + ": " + votes[i]);
+                    votes[i] = votes[i].Split(new string[] { "-->", "--" }, StringSplitOptions.None).Last().Trim(' ');
+                }
 
-            votes.RemoveAll(a => a.Contains("NOT_FOUND"));
-            if (votes.Count > 0)
-            {
-                LastVoteResult = votes.GroupBy(s => s).OrderByDescending(s => s.Count()).First().Key;
-            }
-            else
-            {
-                LastVoteResult = "NOT_FOUND";
-            }
+                votes.RemoveAll(a => a.Contains("NOT_FOUND"));
+                if (votes.Count > 0)
+                {
+                    LastVoteResult = votes.GroupBy(s => s).OrderByDescending(s => s.Count()).First().Key;
+                }
+                else
+                {
+                    LastVoteResult = "NOT_FOUND";
+                }
 
-            Console.WriteLine("MOST FREQUENT PREDICTION: " + LastVoteResult);
+                Console.WriteLine("MOST FREQUENT PREDICTION: " + LastVoteResult);
 
-            return LastVoteResult;
+                return LastVoteResult;
+            });
         }
         
         private Task CultivateTrees(DataTable dt)
         {
+            IsReady = false;
+            OnCultivateStart?.Invoke(this, EventArgs.Empty);
+
             return Task.Factory.StartNew(() =>
             {
                 for (int i = 0; i < CountTree; i++)
@@ -82,6 +96,7 @@ namespace Project_Data_Mining
                         try
                         {
                             Trees.Add(new Tree(sample));
+                            OnCultivateProgress?.Invoke(Trees.Count, (double)Trees.Count / (double)CountTree * 100);
                             Console.WriteLine("Cultivating trees........" + (Trees.Count) + " / " + CountTree);
                         }
                         catch (Exception e)
@@ -116,7 +131,5 @@ namespace Project_Data_Mining
                 return newDt;
             });
         }
-
-       
     }
 }
