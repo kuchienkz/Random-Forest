@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 
 namespace Project_Data_Mining.ObjectClass
 {
+    public enum MyEnum
+    {
+
+    }
     public class Attribute
     {
         public Attribute(string name, List<string> distincttAttributevalues)
@@ -14,6 +18,8 @@ namespace Project_Data_Mining.ObjectClass
             Name = name;
             DistinctAttributeValues = distincttAttributevalues;
         }
+
+        public
 
         public string Name { get; }
 
@@ -32,6 +38,11 @@ namespace Project_Data_Mining.ObjectClass
             }
 
             return distinctValues.ToList();
+        }
+
+        public bool Compare()
+        {
+
         }
     }
 }

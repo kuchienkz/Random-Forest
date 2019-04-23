@@ -74,15 +74,15 @@ namespace Project_Data_Mining.ObjectClass
         {
             var root = GetRootNode(dt, edgeName);
 
-            foreach (var item in root.NodeAttribute.DistinctAttributeValues)
+            foreach (var val in root.NodeAttribute.DistinctAttributeValues)
             {
-                if (IsLeaf(root, dt, item))
+                if (IsLeaf(root, dt, val))
                 {
                     continue;
                 }
 
-                var reducedTable = CreateSmallerTable(dt, item, root.TableIndex);
-                root.ChildNodes.Add(Learn(reducedTable, item));
+                var reducedTable = CreateSmallerTable(dt, val, root.TableIndex);
+                root.ChildNodes.Add(Learn(reducedTable, val));
             }
 
             return root;
@@ -161,16 +161,15 @@ namespace Project_Data_Mining.ObjectClass
             for (var i = 0; i < dt.Columns.Count - 1; i++)
             {
                 var distinctvalues = Attribute.GetDistinctAttributeValuesOfColumn(dt, i);
-                
                 attributes.Add(new Attribute(dt.Columns[i].ToString(), distinctvalues));
             }
 
             // Calculate Entropy (S)
-            var tableEntropy = CalculateTableEntropy(dt);
+            var tableEntropy = CalculateBaseEntropy(dt);
 
             for (var i = 0; i < attributes.Count; i++)
             {
-                attributes[i].InformationGain = GetGainForAllAttributes(dt, i, tableEntropy);
+                attributes[i].InformationGain = CalculateInformationGain(dt, i, tableEntropy);
                 if (attributes[i].InformationGain > highestInformationGain)
                 {
                     highestInformationGain = attributes[i].InformationGain;
@@ -182,101 +181,102 @@ namespace Project_Data_Mining.ObjectClass
             return new TreeNode(attributes[highestInformationGainIndex].Name, highestInformationGainIndex, attributes[highestInformationGainIndex], edge);
         }
 
-        private static double GetGainForAllAttributes(DataTable dt, int colIndex, double entropyOfDataset)
+        private static double CalculateInformationGain(DataTable dt, int colIndex, double baseEntropy)
         {
             var totalRows = dt.Rows.Count;
-            var amountForDifferentValue = GetAmountOfEdgesAndTotalPositivResults(dt, colIndex);
-            var stepsForCalculation = new List<double>();
+            var amountOfEachDistinctValue = GetAmountOfEachDistinctValue(dt, colIndex);
+            var amountOfEachDistinctValue_resol = GetAmountOfEachDistinctValue(dt, dt.Columns.Count - 1);
 
-            foreach (var item in amountForDifferentValue)
+            var stepsForCalculation = new List<double>();
+            
+            foreach (var val in amountOfEachDistinctValue)
             {
-                // helper for calculation
-                var firstDivision = item[0, 1] / (double)item[0, 0];
-                var secondDivision = (item[0, 0] - item[0, 1]) / (double)item[0, 0];
+                var p_val = val.Occurences / (double)dt.Rows.Count; // peluang val
+                var p_val_label = new List<KeyValuePair<string, int>>();
+                foreach (var label in amountOfEachDistinctValue_resol)
+                {
+                    int c = 0;
+                    for (int i = 0; i < dt.Rows.Count; i++)
+                    {
+                        if ((string)dt.Rows[i][colIndex] == val.Value && (string)dt.Rows[i][dt.Columns.Count - 1] == label.Value)
+                        {
+                            c++;
+                        }
+                    }
+                    p_val_label.Add(new KeyValuePair<string, int>(label.Value, c));
+                }
 
                 // prevent dividedByZeroException
-                if (firstDivision == 0 || secondDivision == 0)
+                if (p_val == 0)
                 {
                     stepsForCalculation.Add(0.0);
                 }
                 else
                 {
-                    stepsForCalculation.Add(-firstDivision * Math.Log(firstDivision, 2) - secondDivision * Math.Log(secondDivision, 2));
+                    //stepsForCalculation.Add(-p * Math.Log(p, 2) - secondDivision * Math.Log(secondDivision, 2));
+                    var calc = p_val * CalculateEntropy(p_val_label.Select(a => a.Value / (double)val.Occurences).ToArray());
+                    stepsForCalculation.Add(calc);
                 }
             }
 
-            var gain = stepsForCalculation.Select((t, i) => amountForDifferentValue[i][0, 0] / (double)totalRows * t).Sum();
-
-            gain = entropyOfDataset - gain;
+            var gain = baseEntropy - stepsForCalculation.Sum();
 
             return gain;
         }
 
-        private static double CalculateTableEntropy(DataTable dt)
+        private static double CalculateBaseEntropy(DataTable dt)
         {
-            var totalRows = dt.Rows.Count;
-            var amountForDifferentValue = GetAmountOfEdgesAndTotalPositivResults(dt, dt.Columns.Count - 1);
+            var amountOfEachDistinctValue = GetAmountOfEachDistinctValue(dt, dt.Columns.Count - 1);
 
-            var stepsForCalculation = amountForDifferentValue
-                .Select(item => item[0, 0] / (double)totalRows)
-                .Select(division => -division * Math.Log(division, 2))
-                .ToList();
+            var cRows = dt.Rows.Count;
+            var baseEntropy = CalculateEntropy(amountOfEachDistinctValue
+                .Select(val => val.Occurences / (double)cRows) // hitung peluang setiap value
+                .ToArray());
 
-            return stepsForCalculation.Sum();
+            return baseEntropy;
         }
 
-        private static List<int[,]> GetAmountOfEdgesAndTotalPositivResults(DataTable dt, int indexOfColumnToCheck)
+        private static List<DistinctValue> GetAmountOfEachDistinctValue(DataTable dt, int indexOfColumnToCheck)
         {
-            var foundValues = new List<int[,]>();
-            var knownValues = CountKnownValues(dt, indexOfColumnToCheck);
+            var foundValues = new List<DistinctValue>();
+            var distinctValues = GetDisticntValues(dt, indexOfColumnToCheck);
 
-            foreach (var item in knownValues)
+            foreach (var val in distinctValues)
             {
-                var amount = 0;
-                var positiveAmount = 0;
+                var occurence = 0;
+                //var x = 0;
 
                 for (var i = 0; i < dt.Rows.Count; i++)
                 {
-                    if (dt.Rows[i][indexOfColumnToCheck].ToString().Equals(item))
+                    if (dt.Rows[i][indexOfColumnToCheck].ToString().Equals(val))
                     {
-                        amount++;
-
-                        // Counts the positive cases and adds the sum later to the array for the calculation
-                        if (dt.Rows[i][dt.Columns.Count - 1].ToString().Equals(dt.Rows[0][dt.Columns.Count - 1]))
-                        {
-                            positiveAmount++;
-                        }
+                        occurence++;
+                        //var p = dt.Rows[i][indexOfColumnToCheck].ToString();
+                        //var q = dt.Rows[0][indexOfColumnToCheck];
+                        //if (p.Equals(q))
+                        //{
+                        //    x++;
+                        //}
                     }
                 }
 
-                int[,] array = { { amount, positiveAmount } };
+                var array = new DistinctValue(val, occurence);
                 foundValues.Add(array);
             }
 
             return foundValues;
         }
 
-        private static IEnumerable<string> CountKnownValues(DataTable dt, int indexOfColumnToCheck)
+        private static IEnumerable<string> GetDisticntValues(DataTable dt, int indexOfColumnToCheck)
         {
-            var knownValues = new List<string>();
-
-            // add the value of the first row to the list
-            if (dt.Rows.Count > 0)
-            {
-                knownValues.Add(dt.Rows[0][indexOfColumnToCheck].ToString());
-            }
-
+            var dVals = new SortedSet<string>();
+            
             for (var j = 1; j < dt.Rows.Count; j++)
             {
-                var newValue = knownValues.All(item => !dt.Rows[j][indexOfColumnToCheck].ToString().Equals(item));
-
-                if (newValue)
-                {
-                    knownValues.Add(dt.Rows[j][indexOfColumnToCheck].ToString());
-                }
+                dVals.Add(dt.Rows[j][indexOfColumnToCheck].ToString());
             }
 
-            return knownValues;
+            return dVals;
         }
 
         private string GenerateGraphVizInput(TreeNode root, string edge)
@@ -296,6 +296,29 @@ namespace Project_Data_Mining.ObjectClass
             }
 
             return s + "}";
+        }
+
+        private static double CalculateEntropy(params double[] p)
+        {
+            double r = 0.0;
+            foreach (var z in p)
+            {
+                r += -(z * Math.Log(z, p.Length));
+            }
+            return double.IsNaN(r) ? 0 : r;
+                   
+        }
+
+        private class DistinctValue
+        {
+            public string Value;
+            public int Occurences;
+
+            public DistinctValue(string value, int occurences)
+            {
+                Value = value;
+                Occurences = occurences;
+            }
         }
     }
 }

@@ -46,13 +46,13 @@
         </GroupBox>
         <GridSplitter Grid.Row="2" Grid.ColumnSpan="2" Background="#FF519300" Foreground="#FF519300" HorizontalAlignment="Stretch"/>
         <GroupBox Header="Test Set" Grid.Row="3" Grid.ColumnSpan="2" FontWeight="Bold" Padding="5" Margin="0,5,0,0" FontSize="20">
-            <ListView Background="#7FFFFFFF" x:Name="list_testSet" FontSize="18">
+            <ListView Background="#7FFFFFFF" x:Name="list_testSet" FontSize="18" SelectionMode="Single">
                 <ListView.View>
                     <GridView>
                         <GridViewColumn Header="Action">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Content="Test"/>
+                                    <Button x:Name="lvi_action" Content="Input" Click="Lvi_action_Click"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

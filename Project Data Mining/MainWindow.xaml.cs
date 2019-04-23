@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -166,6 +167,7 @@ namespace Project_Data_Mining
                     filepath = fd.FileName;
                     
                     btn_rebuild.IsEnabled = true;
+                    txt_btm.Text = "File loaded, click 'Build Forest' to create Model";
                 }
                 catch (Exception er)
                 {
@@ -217,6 +219,7 @@ namespace Project_Data_Mining
                     ((ComboBox)cn).SelectedIndex = 0;
                     ((ComboBox)cn).FontSize = 15;
                     ((ComboBox)cn).HorizontalAlignment = HorizontalAlignment.Stretch;
+                    ((ComboBox)cn).IsEditable = true;
                 }
                 cn.MinWidth = 150;
                 cn.Height = 30;
@@ -369,6 +372,67 @@ namespace Project_Data_Mining
                     });
                 }
             });
+        }
+
+
+        public static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj)
+       where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                    {
+                        yield return (T)child;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
+            }
+        }
+
+
+        public static childItem FindVisualChild<childItem>(DependencyObject obj)
+    where childItem : DependencyObject
+        {
+            foreach (childItem child in FindVisualChildren<childItem>(obj))
+            {
+                return child;
+            }
+
+            return null;
+        }
+
+        private void Lvi_action_Click(object sender, RoutedEventArgs e)
+        {
+            var dataRow = (DataRowView)((Button)sender).DataContext;
+            list_testSet.SelectedIndex = list_testSet.Items.IndexOf(dataRow);
+
+            var vals = dataRow.Row.ItemArray.Select(a => a.ToString()).ToList();
+            vals.RemoveAt(vals.Count - 1);
+            int i = 0;
+            foreach (var cn in sp_inputs.Children)
+            {
+                if (cn.GetType() == typeof(TextBlock))
+                {
+                    continue;
+                }
+
+                if (cn.GetType() == typeof(TextBox))
+                {
+                    ((TextBox)cn).Text = vals[i];
+                }
+                else
+                {
+                    ((ComboBox)cn).Text = vals[i];
+                }
+                i++;
+            }
         }
     }
 }
