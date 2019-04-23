@@ -19,7 +19,7 @@ namespace Project_Data_Mining.ObjectClass
             DistinctAttributeValues = distincttAttributevalues;
         }
 
-        public
+        public CategoricalComparer CategoricalComparer;
 
         public string Name { get; }
 
