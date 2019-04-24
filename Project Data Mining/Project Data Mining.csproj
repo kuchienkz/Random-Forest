@@ -63,9 +63,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="ObjectClass\Attribute.cs" />
-    <Compile Include="ObjectClass\CategoricalFactory.cs" />
-    <Compile Include="ObjectClass\CSV_Preprocessor.cs" />
-    <Compile Include="ObjectClass\DistinctValue.cs" />
+    <Compile Include="ObjectClass\CategoricalComparer.cs" />
     <Compile Include="ObjectClass\Forest.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>

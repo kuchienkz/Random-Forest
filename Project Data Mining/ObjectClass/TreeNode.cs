@@ -8,7 +8,7 @@ namespace Project_Data_Mining.ObjectClass
 {
     public class TreeNode
     {
-        public TreeNode(string name, int tableIndex, Attribute nodeAttribute, DistinctValue edge)
+        public TreeNode(string name, int tableIndex, Attribute nodeAttribute, string edge)
         {
             Name = name;
             TableIndex = tableIndex;
@@ -17,7 +17,7 @@ namespace Project_Data_Mining.ObjectClass
             Edge = edge;
         }
 
-        public TreeNode(bool isleaf, string name, DistinctValue edge)
+        public TreeNode(bool isleaf, string name, string edge)
         {
             IsLeaf = isleaf;
             Name = name;
@@ -26,7 +26,7 @@ namespace Project_Data_Mining.ObjectClass
 
         public string Name { get; }
 
-        public DistinctValue Edge { get; }
+        public string Edge { get; }
 
         public Attribute NodeAttribute { get; }
 

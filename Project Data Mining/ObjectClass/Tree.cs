@@ -10,18 +10,16 @@ namespace Project_Data_Mining.ObjectClass
 {
     public class Tree
     {
+
         public string GraphVizInput;
         public readonly DataTable Dataset;
         public TreeNode Root { get; set; }
         public static List<Attribute> AttributeCollection;
-        public static List<CategoricalFactory.EqualWidthBin[]> AttributeDescriptors;
-
-
+        
         public Tree(DataTable dt)
         {
             Dataset = dt;
-
-            Root = Learn(dt, new DistinctValue("", 0));
+            Root = Learn(dt, "");
             GraphVizInput = GenerateGraphVizInput(Root, "");
         }
 
@@ -46,7 +44,7 @@ namespace Project_Data_Mining.ObjectClass
 
             if (root.IsLeaf)
             {
-                routeStr = root.Edge.Value.ToLower() + " --> " + root.Name.ToUpper();
+                routeStr = root.Edge.ToLower() + " --> " + root.Name.ToUpper();
                 valueFound = true;
             }
             else
@@ -55,11 +53,11 @@ namespace Project_Data_Mining.ObjectClass
                 {
                     foreach (var entry in valuesForQuery)
                     {
-                        if (childNode.Edge.Value.ToUpper().Equals(entry.Value.ToUpper()) && root.Name.ToUpper().Equals(entry.Key.ToUpper()))
+                        if (childNode.Edge.ToUpper().Equals(entry.Value.ToUpper()) && root.Name.ToUpper().Equals(entry.Key.ToUpper()))
                         {
                             valuesForQuery.Remove(entry.Key);
 
-                            return routeStr + Predict(childNode, valuesForQuery, $"{childNode.Edge.Value.ToLower()} --> ");
+                            return routeStr + Predict(childNode, valuesForQuery, $"{childNode.Edge.ToLower()} --> ");
                         }
                     }
                 }
@@ -72,7 +70,7 @@ namespace Project_Data_Mining.ObjectClass
             return routeStr;
         }
 
-        private TreeNode Learn(DataTable dt, DistinctValue edgeName)
+        private TreeNode Learn(DataTable dt, string edgeName)
         {
             var root = GetRootNode(dt, edgeName);
 
@@ -90,7 +88,7 @@ namespace Project_Data_Mining.ObjectClass
             return root;
         }
 
-        private static bool IsLeaf(TreeNode root, DataTable dt, DistinctValue value)
+        private static bool IsLeaf(TreeNode root, DataTable dt, string attribute)
         {
             var isLeaf = true;
             var allEndValues = new List<string>();
@@ -99,21 +97,10 @@ namespace Project_Data_Mining.ObjectClass
             for (var i = 0; i < dt.Rows.Count; i++)
             {
                 var s = dt.Rows[i][root.TableIndex].ToString();
-                if (value.HasDescriptor)
+                if (s.Equals(attribute))
                 {
-                    if (value.Descriptor.Check(s))
-                    {
-                        var ss = dt.Rows[i][dt.Columns.Count - 1].ToString();
-                        allEndValues.Add(ss);
-                    }
-                }
-                else
-                {
-                    if (s.Equals(value.Value))
-                    {
-                        var ss = dt.Rows[i][dt.Columns.Count - 1].ToString();
-                        allEndValues.Add(ss);
-                    }
+                    var ss = dt.Rows[i][dt.Columns.Count - 1].ToString();
+                    allEndValues.Add(ss);
                 }
             }
 
@@ -126,46 +113,36 @@ namespace Project_Data_Mining.ObjectClass
             // create leaf with value to display and edge to the leaf
             if (isLeaf)
             {
-                root.ChildNodes.Add(new TreeNode(true, allEndValues[0], value));
+                root.ChildNodes.Add(new TreeNode(true, allEndValues[0], attribute));
             }
 
             return isLeaf;
         }
 
-        private static DataTable CreateSmallerTable(DataTable dt, DistinctValue edgePointingToNextNode, int rootTableIndex)
+        private static DataTable CreateSmallerTable(DataTable dt, string edgePointingToNextNode, int rootTableIndex)
         {
-            var smallerDt = dt.Clone();
+            var smallerDt = new DataTable();
+
+            // add column titles
+            for (var i = 0; i < dt.Columns.Count; i++)
+            {
+                smallerDt.Columns.Add(dt.Columns[i].ToString());
+            }
 
             // add rows which contain edgePointingToNextNode to new datatable
             for (var i = 0; i < dt.Rows.Count; i++)
             {
-                var row = new string[dt.Columns.Count];
-
-                if (edgePointingToNextNode.HasDescriptor)
+                if (dt.Rows[i][rootTableIndex].ToString().Equals(edgePointingToNextNode))
                 {
-                    if (edgePointingToNextNode.Descriptor.Check(dt.Rows[i][rootTableIndex].ToString()))
-                    {
-                        for (var j = 0; j < dt.Columns.Count; j++)
-                        {
-                            row[j] = dt.Rows[i][j].ToString();
-                        }
+                    var row = new string[dt.Columns.Count];
 
-                        smallerDt.Rows.Add(row);
-                    }
-                }
-                else
-                {
-                    if (dt.Rows[i][rootTableIndex].ToString().Equals(edgePointingToNextNode.Value))
+                    for (var j = 0; j < dt.Columns.Count; j++)
                     {
-                        for (var j = 0; j < dt.Columns.Count; j++)
-                        {
-                            row[j] = dt.Rows[i][j].ToString();
-                        }
-
-                        smallerDt.Rows.Add(row);
+                        row[j] = dt.Rows[i][j].ToString();
                     }
+
+                    smallerDt.Rows.Add(row);
                 }
-               
             }
 
             // remove column which was already used as node            
@@ -174,7 +151,7 @@ namespace Project_Data_Mining.ObjectClass
             return smallerDt;
         }
 
-        private static TreeNode GetRootNode(DataTable dt, DistinctValue edge)
+        private static TreeNode GetRootNode(DataTable dt, string edge)
         {
             var attributes = new List<Attribute>();
             var highestInformationGainIndex = -1;
@@ -188,11 +165,11 @@ namespace Project_Data_Mining.ObjectClass
             }
 
             // Calculate Entropy (S)
-            var baseEntropy = CalculateBaseEntropy(dt);
+            var tableEntropy = CalculateBaseEntropy(dt);
 
             for (var i = 0; i < attributes.Count; i++)
             {
-                attributes[i].InformationGain = CalculateInformationGain(dt, i, baseEntropy);
+                attributes[i].InformationGain = CalculateInformationGain(dt, i, tableEntropy);
                 if (attributes[i].InformationGain > highestInformationGain)
                 {
                     highestInformationGain = attributes[i].InformationGain;
@@ -214,31 +191,20 @@ namespace Project_Data_Mining.ObjectClass
             
             foreach (var val in amountOfEachDistinctValue)
             {
+                var p_val = val.Occurences / (double)dt.Rows.Count; // peluang val
                 var p_val_label = new List<KeyValuePair<string, int>>();
                 foreach (var label in amountOfEachDistinctValue_resol)
                 {
                     int c = 0;
                     for (int i = 0; i < dt.Rows.Count; i++)
                     {
-                        if (val.HasDescriptor)
+                        if ((string)dt.Rows[i][colIndex] == val.Value && (string)dt.Rows[i][dt.Columns.Count - 1] == label.Value)
                         {
-                            if (val.Descriptor.Check((string)dt.Rows[i][colIndex]) && (string)dt.Rows[i][dt.Columns.Count - 1] == label.Value)
-                            {
-                                c++;
-                            }
-                        }
-                        else
-                        {
-                            if ((string)dt.Rows[i][colIndex] == val.Value && (string)dt.Rows[i][dt.Columns.Count - 1] == label.Value)
-                            {
-                                c++;
-                            }
+                            c++;
                         }
                     }
                     p_val_label.Add(new KeyValuePair<string, int>(label.Value, c));
                 }
-
-                var p_val = val.Occurences / (double)dt.Rows.Count; // peluang val
 
                 // prevent dividedByZeroException
                 if (p_val == 0)
@@ -257,57 +223,51 @@ namespace Project_Data_Mining.ObjectClass
 
             return gain;
         }
-        
+
+        private static double CalculateBaseEntropy(DataTable dt)
+        {
+            var amountOfEachDistinctValue = GetAmountOfEachDistinctValue(dt, dt.Columns.Count - 1);
+
+            var cRows = dt.Rows.Count;
+            var baseEntropy = CalculateEntropy(amountOfEachDistinctValue
+                .Select(val => val.Occurences / (double)cRows) // hitung peluang setiap value
+                .ToArray());
+
+            return baseEntropy;
+        }
+
         private static List<DistinctValue> GetAmountOfEachDistinctValue(DataTable dt, int indexOfColumnToCheck)
         {
             var foundValues = new List<DistinctValue>();
-            var descriptor = Tree.AttributeDescriptors.Count > indexOfColumnToCheck ? AttributeDescriptors[indexOfColumnToCheck] : null;
+            var distinctValues = GetDisticntValues(dt, indexOfColumnToCheck);
 
-            if (descriptor == null) // already categorical
+            foreach (var val in distinctValues)
             {
-                var distinctValues = GetCategoricalDisticntValues(dt, indexOfColumnToCheck);
-                foreach (var val in distinctValues)
+                var occurence = 0;
+                //var x = 0;
+
+                for (var i = 0; i < dt.Rows.Count; i++)
                 {
-                    var occurence = 0;
-
-                    for (var i = 0; i < dt.Rows.Count; i++)
+                    if (dt.Rows[i][indexOfColumnToCheck].ToString().Equals(val))
                     {
-
-                        if (dt.Rows[i][indexOfColumnToCheck].ToString().Equals(val))
-                        {
-                            occurence++;
-                        }
+                        occurence++;
+                        //var p = dt.Rows[i][indexOfColumnToCheck].ToString();
+                        //var q = dt.Rows[0][indexOfColumnToCheck];
+                        //if (p.Equals(q))
+                        //{
+                        //    x++;
+                        //}
                     }
-
-                    var array = new DistinctValue(val, occurence);
-                    foundValues.Add(array);
                 }
+
+                var array = new DistinctValue(val, occurence);
+                foundValues.Add(array);
             }
-            else // numerical, use descriptor
-            {
-                foreach (var dc in descriptor)
-                {
-                    var occurence = 0;
-
-                    for (var i = 0; i < dt.Rows.Count; i++)
-                    {
-
-                        if (dc.Check(dt.Rows[i][indexOfColumnToCheck].ToString()))
-                        {
-                            occurence++;
-                        }
-                    }
-
-                    var array = new DistinctValue(dc, occurence);
-                    foundValues.Add(array);
-                }
-            }
-            
 
             return foundValues;
         }
 
-        private static IEnumerable<string> GetCategoricalDisticntValues(DataTable dt, int indexOfColumnToCheck)
+        private static IEnumerable<string> GetDisticntValues(DataTable dt, int indexOfColumnToCheck)
         {
             var dVals = new SortedSet<string>();
             
@@ -326,8 +286,8 @@ namespace Project_Data_Mining.ObjectClass
             {
                 foreach (var n in root.ChildNodes)
                 {
-                    GenerateGraphVizInput(n, root.Edge.Value.ToLower());
-                    s += "\"" + root.Name.ToUpper() + "\" -> \"" + n.Name.ToUpper() + "\"[label=\"" + n.Edge.Value.ToLower() + "\"];\n";
+                    GenerateGraphVizInput(n, root.Edge.ToLower());
+                    s += "\"" + root.Name.ToUpper() + "\" -> \"" + n.Name.ToUpper() + "\"[label=\"" + n.Edge.ToLower() + "\"];\n";
                 }
             }
             else
@@ -338,27 +298,27 @@ namespace Project_Data_Mining.ObjectClass
             return s + "}";
         }
 
-        public static double CalculateBaseEntropy(DataTable dt)
-        {
-            var amountOfEachDistinctValue = GetAmountOfEachDistinctValue(dt, dt.Columns.Count - 1);
-
-            var cRows = dt.Rows.Count;
-            var baseEntropy = CalculateEntropy(amountOfEachDistinctValue
-                .Select(val => val.Occurences / (double)cRows) // hitung peluang setiap fitur
-                .ToArray());
-
-            return baseEntropy;
-        }
-
-        public static double CalculateEntropy(params double[] peluang)
+        private static double CalculateEntropy(params double[] p)
         {
             double r = 0.0;
-            foreach (var z in peluang)
+            foreach (var z in p)
             {
-                r += -(z * Math.Log(z, peluang.Length));
+                r += -(z * Math.Log(z, p.Length));
             }
             return double.IsNaN(r) ? 0 : r;
                    
+        }
+
+        private class DistinctValue
+        {
+            public string Value;
+            public int Occurences;
+
+            public DistinctValue(string value, int occurences)
+            {
+                Value = value;
+                Occurences = occurences;
+            }
         }
     }
 }

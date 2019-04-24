@@ -19,7 +19,6 @@ namespace Project_Data_Mining
 
         public List<Tree> Trees;
         public List<ObjectClass.Attribute> Attributes;
-        public List<CategoricalFactory.EqualWidthBin[]> AttributeDescriptors;
         public bool IsReady { get; set; }
         public string LastVoteResult { get; private set;}
 
@@ -30,21 +29,6 @@ namespace Project_Data_Mining
             Console.WriteLine("GENERATING FOREST...");
             IsReady = false;
             Trees = new List<Tree>();
-            AttributeDescriptors = new List<CategoricalFactory.EqualWidthBin[]>(dataset.Columns.Count);
-
-            // [EXPERIMENTAL] Convert numericals to categorical, for training set only
-            for (int i = 0; i < dataset.Columns.Count; i++)
-            {
-                var vals = ObjectClass.Attribute.GetDistinctAttributeValuesOfColumn(dataset, i);
-
-                if (vals.Count > 10
-                    && vals.All(a => double.TryParse(a.Value, out double ou))) // probably numerical
-                {
-                    var bins = CategoricalFactory.GenerateEqualWidthBins(dataset, i, 4);
-                    AttributeDescriptors.Add(bins);
-                }
-            }
-            Tree.AttributeDescriptors = AttributeDescriptors;
 
             CountTree = jumlahTree;
             SubsampleSize = ukuranSubsample;
