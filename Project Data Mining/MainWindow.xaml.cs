@@ -50,106 +50,6 @@ namespace Project_Data_Mining
             Console.WriteLine("\nRESULT:" + forest.Predict(TrainingSet.Rows[idx]) + "\n\n");
         }
 
-        private DataTable CSVtoDataTable(string strFilePath)
-        {
-            DataTable dt = new DataTable();
-            var lines = File.ReadAllLines(strFilePath).ToList();
-
-            // Preserve coma inside quotes
-            for (int i = 0; i < lines.Count; i++)
-            {
-                var s = lines[i];
-                if (Regex.IsMatch(s, "\"[^\"]+\""))
-                {
-                    foreach (Match m in Regex.Matches(s, "\"[^\"]+\""))
-                    {
-                        var ori = m.Value;
-                        var replace = ori.Replace(",", "_COMA_").Replace("\"", "");
-                        lines[i] = s.Replace(ori, replace);
-                    }
-                }
-            }
-
-            // get headers and exclude header row
-            string[] headers = lines[0].Split(',');
-            lines.RemoveAt(0);
-
-            // Randomize data order, using Fisher-Yate algorithm
-            int n = lines.Count;
-            for (int i = 0; i < n; i++)
-            {
-                int cc = i + this.r.Next(n - i);
-                string t = lines[cc];
-                lines[cc] = lines[i];
-                lines[i] = t;
-            }
-
-            string[,] tableVals = new string[lines.Count, headers.Length];
-            string[] modes = new string[headers.Length];
-
-            foreach (string header in headers)
-            {
-                dt.Columns.Add(header);
-            }
-            int r = 0;
-            for (int q = 0; q < lines.Count; q++)
-            {
-                string[] rowVals = lines[q].Split(',');
-                for (int i = 0; i < headers.Length; i++)
-                {
-                    tableVals[q,i] = rowVals[i].Replace("_COMA_", ",");
-                }
-                r++;
-            }
-
-            
-            
-            // Calculate mode for each column, for missing data subtitution
-            for (int i = 0; i < headers.Length; i++)
-            {
-                string[] vals = new string[tableVals.GetLength(0)];
-                for (int j = 0; j < tableVals.GetLength(0); j++)
-                {
-                    vals[j] = tableVals[j, i];
-                }
-                modes[i] = vals.Where(a => a != "?").GroupBy(a => a).OrderByDescending(a => a.Count()).First().Key;
-            }
-
-            // Replace missing data with Mode
-            int l = tableVals.GetLength(0);
-            for (int i = 0; i < l; i++)
-            {
-                DataRow dr = dt.NewRow();
-                for (int j = 0; j < headers.Length; j++)
-                {
-                    var s = tableVals[i, j];
-                    if (IsMissingValue(s))
-                    {
-                        s = modes[j];
-                    }
-                    dr[j] = s;
-                }
-                dt.Rows.Add(dr);
-            }
-
-            // Take 30% as Test Set, return the rest
-            TestSet = dt.Clone();
-            var count = (int)Math.Round(dt.Rows.Count * 0.3, 0);
-            for (int i = 0; i < count; i++)
-            {
-                TestSet.Rows.Add(dt.Rows[i].ItemArray);
-                dt.Rows.RemoveAt(i);
-            }
-
-            return dt;
-        }
-
-        private bool IsMissingValue(string s)
-        {
-            return s.Contains("?")
-                || s.Replace(" ", "") == "";
-        }
-
         private void Tbx_numTrees_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = Regex.IsMatch(e.Text, "[^0-9]");
@@ -161,7 +61,7 @@ namespace Project_Data_Mining
             {
                 try
                 {
-                    var testDt = CSVtoDataTable(fd.FileName);
+                    var testDt = CSV_Preprocessor.CSVtoDataTable(fd.FileName, r, TestSet);
                     tbx_numSamples.Text = Math.Round(testDt.Rows.Count * 0.7, 0).ToString();
                     tbx_dataset.Text = Path.GetFileName(fd.FileName);
                     filepath = fd.FileName;
@@ -250,7 +150,7 @@ namespace Project_Data_Mining
 
             btn_rebuild.IsEnabled = false;
 
-            TrainingSet = CSVtoDataTable(filepath);
+            TrainingSet = CSV_Preprocessor.CSVtoDataTable(filepath, r, TestSet);
             var nTree = int.Parse(tbx_numTrees.Text.Replace(" ", "").TrimStart('0'));
             var nSample = int.Parse(tbx_numSamples.Text.Replace(" ", "").TrimStart('0'));
             RandomForest.OnCultivateStart += Forest_OnCultivateStart;

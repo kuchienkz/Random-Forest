@@ -13,36 +13,52 @@ namespace Project_Data_Mining.ObjectClass
     }
     public class Attribute
     {
-        public Attribute(string name, List<string> distincttAttributevalues)
+        public Attribute(string name, List<DistinctValue> distincttAttributevalues)
         {
             Name = name;
             DistinctAttributeValues = distincttAttributevalues;
         }
 
-        public CategoricalComparer CategoricalComparer;
-
         public string Name { get; }
 
-        public List<string> DistinctAttributeValues { get; }
+        public List<DistinctValue> DistinctAttributeValues { get; }
 
         public double InformationGain { get; set; }
 
-        public static List<string> GetDistinctAttributeValuesOfColumn(DataTable dt, int columnIndex)
+        public static List<DistinctValue> GetDistinctAttributeValuesOfColumn(DataTable dt, int columnIndex)
         {
-            var distinctValues = new SortedSet<string>();
+            var distinctValues = new SortedSet<DistinctValue>();
+            var descriptor = Tree.AttributeDescriptors.Count > columnIndex ? Tree.AttributeDescriptors[columnIndex] : null;
 
-            for (var i = 0; i < dt.Rows.Count; i++)
+            if (descriptor == null)
             {
-                var s = dt.Rows[i][columnIndex].ToString();
-                distinctValues.Add(s);
+
+                for (var i = 0; i < dt.Rows.Count; i++)
+                {
+                    var s = new DistinctValue(dt.Rows[i][columnIndex].ToString(), 0);
+                    distinctValues.Add(s);
+                }
+            }
+            else
+            {
+                
+                for (int i = 0; i < descriptor.Length; i++)
+                {
+                    var cc = 0;
+                    for (int q = 0; q < dt.Rows.Count; q++)
+                    {
+                        if (descriptor[i].Check(dt.Rows[q][columnIndex].ToString()))
+                        {
+                            cc++;
+                        }
+                    }
+                    var s = new DistinctValue(descriptor[i], cc);
+                    distinctValues.Add(s);
+                }
+                
             }
 
             return distinctValues.ToList();
-        }
-
-        public bool Compare()
-        {
-
         }
     }
 }
