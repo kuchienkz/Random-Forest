@@ -18,12 +18,12 @@ namespace Project_Data_Mining
         public event EventHandler OnCultivateFinished;
 
         public List<Tree> Trees;
-        public List<ObjectClass.Attribute> Attributes;
+        public List<Feature> Attributes;
         public bool IsReady { get; set; }
         public string LastVoteResult { get; private set;}
 
         public int CountTree;
-        public int SubsampleSize;
+        public int BootstrapSampleSize;
         public RandomForest(DataTable dataset, int jumlahTree, int ukuranSubsample)
         {
             Console.WriteLine("GENERATING FOREST...");
@@ -31,15 +31,13 @@ namespace Project_Data_Mining
             Trees = new List<Tree>();
 
             CountTree = jumlahTree;
-            SubsampleSize = ukuranSubsample;
+            BootstrapSampleSize = ukuranSubsample;
             
-            CultivateTrees(dataset).ContinueWith(delegate 
+            CultivateTrees(dataset).ContinueWith((t) => 
             {
                 IsReady = true;
                 OnCultivateFinished?.Invoke(this, EventArgs.Empty);
                 Console.WriteLine("FOREST READY!");
-
-                //Console.WriteLine("GraphViz: " + Trees[0].GraphVizInput);
             });
         }
         
@@ -88,28 +86,19 @@ namespace Project_Data_Mining
 
             return Task.Factory.StartNew(() =>
             {
-                for (int i = 0; i < CountTree; i++)
-                {
-                    Task.Factory.StartNew(() =>
-                    {
-                        var sample = BootstrapResample(dt).Result;
-                        try
-                        {
-                            Trees.Add(new Tree(sample));
-                            OnCultivateProgress?.Invoke(Trees.Count, (double)Trees.Count / (double)CountTree * 100);
-                            Console.WriteLine("Cultivating trees........" + (Trees.Count) + " / " + CountTree);
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e.Message);
-                            throw;
-                        }
-                    });
-                }
-
                 while (Trees.Count < CountTree)
                 {
-                    System.Threading.Thread.Sleep(100);
+                    var sample = BootstrapResample(dt).Result;
+                    try
+                    {
+                        Trees.Add(new Tree(sample));
+                        OnCultivateProgress?.Invoke(Trees.Count, Trees.Count / (double)CountTree * 100d);
+                        Console.WriteLine("Cultivating trees........" + (Trees.Count) + " / " + CountTree);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.Message);
+                    }
                 }
             });
         }
@@ -121,7 +110,7 @@ namespace Project_Data_Mining
                 var count = originalDataset.Rows.Count;
                 DataTable newDt = originalDataset.Clone();
                 Random r = new Random();
-                for (int i = 0; i < SubsampleSize; i++)
+                for (int i = 0; i < BootstrapSampleSize; i++)
                 {
                     var idx = r.Next(count);
                     DataRow ro = originalDataset.Rows[idx];
@@ -131,5 +120,20 @@ namespace Project_Data_Mining
                 return newDt;
             });
         }
+
+        //public string GetLargestDOT_Tree()
+        //{
+        //    var longest = "";
+        //    foreach (var t in Trees)
+        //    {
+        //        var a = t.GenerateGraphVizInput();
+        //        if (a.Length > longest.Length)
+        //        {
+        //            longest = a;
+        //        }
+        //    }
+
+        //    return longest;
+        //}
     }
 }

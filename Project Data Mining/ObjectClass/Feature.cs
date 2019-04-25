@@ -7,27 +7,21 @@ using System.Threading.Tasks;
 
 namespace Project_Data_Mining.ObjectClass
 {
-    public enum MyEnum
+    public class Feature
     {
-
-    }
-    public class Attribute
-    {
-        public Attribute(string name, List<string> distincttAttributevalues)
+        public Feature(string name, List<string> distincttAttributevalues)
         {
             Name = name;
             DistinctAttributeValues = distincttAttributevalues;
         }
 
-        public CategoricalComparer CategoricalComparer;
-
         public string Name { get; }
 
         public List<string> DistinctAttributeValues { get; }
 
-        public double InformationGain { get; set; }
+        public double InformationGain { get; set; } = 0;
 
-        public static List<string> GetDistinctAttributeValuesOfColumn(DataTable dt, int columnIndex)
+        public static List<string> GetDistinctValuesOfColumn(DataTable dt, int columnIndex)
         {
             var distinctValues = new SortedSet<string>();
 
@@ -38,11 +32,6 @@ namespace Project_Data_Mining.ObjectClass
             }
 
             return distinctValues.ToList();
-        }
-
-        public bool Compare()
-        {
-
         }
     }
 }

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Remoting.Contexts;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -24,13 +25,14 @@ namespace Project_Data_Mining
         RandomForest forest;
         DataTable TrainingSet;
         DataTable TestSet;
-        Random r;
+        Random random;
         string filepath = "";
         OpenFileDialog fd;
+        bool IsCheckingAccuracy = false;
 
         public MainWindow()
         {
-            r = new Random();
+            random = new Random();
 
             fd = new OpenFileDialog();
             fd.Filter = "CSV file (*.csv)|*.csv";
@@ -42,155 +44,85 @@ namespace Project_Data_Mining
             var uri = new Uri(path);
             this.Background = new ImageBrush(new BitmapImage(uri));
         }
-
-        private void Test2_Click(object sender, RoutedEventArgs e)
+        
+        // Random Forest class events
+        private void Forest_OnVotingProgress(int voteDone, double percentage)
         {
-            var idx = r.Next(TrainingSet.Rows.Count);
-            Console.WriteLine("Testing data #" + (idx + 1));
-            Console.WriteLine("\nRESULT:" + forest.Predict(TrainingSet.Rows[idx]) + "\n\n");
-        }
-
-        private DataTable CSVtoDataTable(string strFilePath)
-        {
-            DataTable dt = new DataTable();
-            var lines = File.ReadAllLines(strFilePath).ToList();
-
-            // Preserve coma inside quotes
-            for (int i = 0; i < lines.Count; i++)
+            if (!IsCheckingAccuracy)
             {
-                var s = lines[i];
-                if (Regex.IsMatch(s, "\"[^\"]+\""))
+                Dispatcher.Invoke(() =>
                 {
-                    foreach (Match m in Regex.Matches(s, "\"[^\"]+\""))
-                    {
-                        var ori = m.Value;
-                        var replace = ori.Replace(",", "_COMA_").Replace("\"", "");
-                        lines[i] = s.Replace(ori, replace);
-                    }
-                }
-            }
-
-            // get headers and exclude header row
-            string[] headers = lines[0].Split(',');
-            lines.RemoveAt(0);
-
-            // Randomize data order, using Fisher-Yate algorithm
-            int n = lines.Count;
-            for (int i = 0; i < n; i++)
-            {
-                int cc = i + this.r.Next(n - i);
-                string t = lines[cc];
-                lines[cc] = lines[i];
-                lines[i] = t;
-            }
-
-            string[,] tableVals = new string[lines.Count, headers.Length];
-            string[] modes = new string[headers.Length];
-
-            foreach (string header in headers)
-            {
-                dt.Columns.Add(header);
-            }
-            int r = 0;
-            for (int q = 0; q < lines.Count; q++)
-            {
-                string[] rowVals = lines[q].Split(',');
-                for (int i = 0; i < headers.Length; i++)
-                {
-                    tableVals[q,i] = rowVals[i].Replace("_COMA_", ",");
-                }
-                r++;
-            }
-
-            
-            
-            // Calculate mode for each column, for missing data subtitution
-            for (int i = 0; i < headers.Length; i++)
-            {
-                string[] vals = new string[tableVals.GetLength(0)];
-                for (int j = 0; j < tableVals.GetLength(0); j++)
-                {
-                    vals[j] = tableVals[j, i];
-                }
-                modes[i] = vals.Where(a => a != "?").GroupBy(a => a).OrderByDescending(a => a.Count()).First().Key;
-            }
-
-            // Replace missing data with Mode
-            int l = tableVals.GetLength(0);
-            for (int i = 0; i < l; i++)
-            {
-                DataRow dr = dt.NewRow();
-                for (int j = 0; j < headers.Length; j++)
-                {
-                    var s = tableVals[i, j];
-                    if (IsMissingValue(s))
-                    {
-                        s = modes[j];
-                    }
-                    dr[j] = s;
-                }
-                dt.Rows.Add(dr);
-            }
-
-            // Take 30% as Test Set, return the rest
-            TestSet = dt.Clone();
-            var count = (int)Math.Round(dt.Rows.Count * 0.3, 0);
-            for (int i = 0; i < count; i++)
-            {
-                TestSet.Rows.Add(dt.Rows[i].ItemArray);
-                dt.Rows.RemoveAt(i);
-            }
-
-            return dt;
-        }
-
-        private bool IsMissingValue(string s)
-        {
-            return s.Contains("?")
-                || s.Replace(" ", "") == "";
-        }
-
-        private void Tbx_numTrees_PreviewTextInput(object sender, TextCompositionEventArgs e)
-        {
-            e.Handled = Regex.IsMatch(e.Text, "[^0-9]");
-        }
-
-        private void Tbx_dataset_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            if (fd.ShowDialog() == true)
-            {
-                try
-                {
-                    var testDt = CSVtoDataTable(fd.FileName);
-                    tbx_numSamples.Text = Math.Round(testDt.Rows.Count * 0.7, 0).ToString();
-                    tbx_dataset.Text = Path.GetFileName(fd.FileName);
-                    filepath = fd.FileName;
-                    
-                    btn_rebuild.IsEnabled = true;
-                    txt_btm.Text = "File loaded, click 'Build Forest' to create Model";
-                }
-                catch (Exception er)
-                {
-                    MessageBox.Show("Failed to load CSV file. Try another file.\n\nError msg: " + er.Message);
-                }
+                    txt_btm.Text = "Collecting votes..." + voteDone + "/" + tbx_numTrees.Text;
+                    txt_main.Text = "Taking votes " + Math.Round(percentage, 0).ToString() + "%";
+                });
             }
         }
 
+        private void Forest_OnCultivateProgress(int treeDone, double percentage)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                txt_btm.Text = "Generating decision tree..." + treeDone + "/" + tbx_numTrees.Text;
+                txt_main.Text = "Growing trees " + Math.Round(percentage, 0) + "%";
+            });
+        }
+        
+        private void Forest_OnCultivateFinished(object sender, EventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                txt_main.Text = "One sec...";
+                txt_btm.Text = "Generating UI...";
+                GenerateUI();
+
+                txt_main.Text = "Forest Ready";
+                txt_btm.Text = "Waiting for test input...";
+
+                GridView gv = (GridView)list_testSet.View;
+                while (gv.Columns.Count > 1)
+                {
+                    gv.Columns.RemoveAt(0);
+                }
+                for (int i = 0; i < TestSet.Columns.Count; i++)
+                {
+                    var column = TestSet.Columns[i];
+                    gv.Columns.Insert(i, new GridViewColumn() { Header = column.Caption.ToUpper(), DisplayMemberBinding = new Binding(column.ColumnName) });
+                }
+                list_testSet.View = gv;
+                list_testSet.ItemsSource = TestSet.DefaultView;
+
+                test_input.IsEnabled = true;
+                Console.WriteLine("Forest succesfully created from " + filepath);
+            });
+        }
+
+        private void Forest_OnCultivateStart(object sender, EventArgs e)
+        {
+            list_testSet.ItemsSource = null;
+            btn_rebuild.IsEnabled = false;
+            test_input.IsEnabled = false;
+            txt_main.Text = "Growing trees...";
+            txt_btm.Text = "...";
+        }
+
+
+
+        // Main class events
         private void GenerateUI()
         {
             // Generate Input Controls 
             sp_inputs.Children.Clear();
             int tabIndex = 30;
 
-            for (int c = 0; c < TrainingSet.Columns.Count - 1; c++)
+            for (int c = 0; c < TestSet.Columns.Count - 1; c++)
             {
-                var a = TrainingSet.Columns[c];
+                var a = TestSet.Columns[c];
                 var tb = new TextBlock();
                 tb.Text = a.Caption.ToUpper() + ":";
                 tb.FontSize = 15;
 
                 Control cn;
-                var distinctValues = TrainingSet.AsEnumerable().Select(q => q.Field<string>(a.ColumnName)).OrderBy(q => q).Distinct().ToList();
+                var distinctValues = TestSet.AsEnumerable().Select(q => q.Field<string>(a.ColumnName)).OrderBy(q => q).Distinct().ToList();
                 if (distinctValues.All(x => !Regex.IsMatch(x, "[A-Za-z]")))
                 {
                     cn = new TextBox();
@@ -233,84 +165,9 @@ namespace Project_Data_Mining
             }
         }
 
-        private void Btn_rebuild_Click(object sender, RoutedEventArgs e)
-        {
-            if (filepath == "")
-            {
-                MessageBox.Show("Click on the green box above to open CSV file.", "CSV File not set", MessageBoxButton.OK, MessageBoxImage.Information);
-                return;
-            }
-            if (forest != null)
-            {
-                if (MessageBox.Show("This will create new forest, replacing the previous one.", "Confirmation", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
-                {
-                    return;
-                }
-            }
 
-            btn_rebuild.IsEnabled = false;
 
-            TrainingSet = CSVtoDataTable(filepath);
-            var nTree = int.Parse(tbx_numTrees.Text.Replace(" ", "").TrimStart('0'));
-            var nSample = int.Parse(tbx_numSamples.Text.Replace(" ", "").TrimStart('0'));
-            RandomForest.OnCultivateStart += Forest_OnCultivateStart;
-            forest = new RandomForest(TrainingSet, nTree, nSample);
-            forest.OnCultivateFinished += Forest_OnCultivateFinished;
-            forest.OnCultivateProgress += Forest_OnCultivateProgress;
-            forest.OnVotingProgress += Forest_OnVotingProgress;
-        }
-
-        private void Forest_OnVotingProgress(int voteDone, double percentage)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                txt_btm.Text = "Collecting votes..." + voteDone + "/" + tbx_numTrees.Text + "  ( " + Math.Round(percentage, 0).ToString() + "% )";
-            });
-        }
-
-        private void Forest_OnCultivateProgress(int treeDone, double percentage)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                txt_btm.Text = "Generating decision tree..." + treeDone + "/" + tbx_numTrees.Text + "  ( " + Math.Round(percentage, 0) + "% )";
-            });
-        }
-        
-        private void Forest_OnCultivateFinished(object sender, EventArgs e)
-        {
-            Dispatcher.Invoke(() =>
-            {
-                txt_main.Text = "One sec...";
-                txt_btm.Text = "Generating UI...";
-                GenerateUI();
-
-                txt_main.Text = "Forest Ready";
-                txt_btm.Text = "Waiting for test input...";
-
-                GridView gv = (GridView)list_testSet.View;
-                while (gv.Columns.Count > 1)
-                {
-                    gv.Columns.RemoveAt(0);
-                }
-                for (int i = 0; i < TestSet.Columns.Count; i++)
-                {
-                    var column = TestSet.Columns[i];
-                    gv.Columns.Insert(i, new GridViewColumn() { Header = column.Caption.ToUpper(), DisplayMemberBinding = new Binding(column.ColumnName) });
-                }
-                list_testSet.View = gv;
-                list_testSet.ItemsSource = TestSet.DefaultView;
-
-                Console.WriteLine("Forest succesfully created from " + filepath);
-            });
-        }
-
-        private void Forest_OnCultivateStart(object sender, EventArgs e)
-        {
-            btn_rebuild.IsEnabled = false;
-            txt_main.Text = "Growing trees...";
-            txt_btm.Text = "...";
-        }
-
+        // User-control interaction events
         private void Tbx_numTrees_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
             if (btn_rebuild == null)
@@ -326,6 +183,7 @@ namespace Project_Data_Mining
             {
                 return;
             }
+            
             txt_main.Text = "...";
             txt_btm.Text = "Getting inputs...";
 
@@ -374,40 +232,6 @@ namespace Project_Data_Mining
             });
         }
 
-
-        public static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj)
-       where T : DependencyObject
-        {
-            if (depObj != null)
-            {
-                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
-                {
-                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
-                    if (child != null && child is T)
-                    {
-                        yield return (T)child;
-                    }
-
-                    foreach (T childOfChild in FindVisualChildren<T>(child))
-                    {
-                        yield return childOfChild;
-                    }
-                }
-            }
-        }
-
-
-        public static childItem FindVisualChild<childItem>(DependencyObject obj)
-    where childItem : DependencyObject
-        {
-            foreach (childItem child in FindVisualChildren<childItem>(obj))
-            {
-                return child;
-            }
-
-            return null;
-        }
-
         private void Lvi_action_Click(object sender, RoutedEventArgs e)
         {
             var dataRow = (DataRowView)((Button)sender).DataContext;
@@ -433,6 +257,124 @@ namespace Project_Data_Mining
                 }
                 i++;
             }
+        }
+
+        private void Tbx_dataset_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (fd.ShowDialog() == true)
+            {
+                try
+                {
+                    var testDt = CSVPreprocessor.CSVtoDataTable(fd.FileName, ref TestSet, random);
+                    tbx_numSamples.Text = Math.Round(testDt.Rows.Count * 0.7, 0).ToString();
+                    tbx_dataset.Text = Path.GetFileName(fd.FileName);
+                    filepath = fd.FileName;
+
+                    btn_rebuild.IsEnabled = true;
+                    txt_btm.Text = "File loaded, click 'Build Forest' to create Model";
+                }
+                catch (Exception er)
+                {
+                    MessageBox.Show("Failed to load CSV file. Try another file.\n\nError msg: " + er.Message);
+                }
+            }
+        }
+
+        private void Btn_rebuild_Click(object sender, RoutedEventArgs e)
+        {
+            if (filepath == "")
+            {
+                MessageBox.Show("Click on the green box above to open CSV file.", "CSV File not set", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (forest != null)
+            {
+                if (MessageBox.Show("This will create new forest, replacing the previous one.", "Confirmation", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                {
+                    return;
+                }
+            }
+
+            btn_rebuild.IsEnabled = false;
+
+            TrainingSet = CSVPreprocessor.CSVtoDataTable(filepath, ref TestSet, random);
+            var nTree = int.Parse(tbx_numTrees.Text.Replace(" ", "").TrimStart('0'));
+            var nSample = int.Parse(tbx_numSamples.Text.Replace(" ", "").TrimStart('0'));
+            RandomForest.OnCultivateStart += Forest_OnCultivateStart;
+            forest = new RandomForest(TrainingSet, nTree, nSample);
+            forest.OnCultivateFinished += Forest_OnCultivateFinished;
+            forest.OnCultivateProgress += Forest_OnCultivateProgress;
+            forest.OnVotingProgress += Forest_OnVotingProgress;
+        }
+
+        private void Test2_Click(object sender, RoutedEventArgs e)
+        {
+            var idx = random.Next(TrainingSet.Rows.Count);
+            Console.WriteLine("Testing data #" + (idx + 1));
+            Console.WriteLine("\nRESULT:" + forest.Predict(TrainingSet.Rows[idx]) + "\n\n");
+        }
+
+        private void Tbx_numTrees_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = Regex.IsMatch(e.Text, "[^0-9]");
+        }
+
+        private void Btn_accuracy_Click(object sender, RoutedEventArgs e)
+        {
+            if (TestSet == null || TestSet.Rows.Count == 0)
+            {
+                return;
+            }
+
+            IsCheckingAccuracy = true;
+
+            btn_accuracy.IsEnabled = false;
+            txt_accuracy.Text = "Checking...";
+            txt_accuracy.FontSize = 20;
+
+            var rowCount = TestSet.Rows.Count;
+            var correctPredictionIndices = new List<int>(rowCount);
+
+            Task.Factory.StartNew(() =>
+            {
+                for (int i = 0; i < rowCount; i++)
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        txt_main.Text = "Predicting Test dataset " + Math.Floor(((i + 1) / (double)rowCount) * 100d) + "%";
+                        txt_btm.Text = "Predicting data input... " + (i+1) + "/" + rowCount;
+                    });
+
+                    var res = forest.Predict(TestSet.Rows[i]);
+                    res.Wait();
+
+                    var a = TestSet.Rows[i][TestSet.Columns.Count - 1].ToString();
+                    if (a.Equals(res.Result, StringComparison.OrdinalIgnoreCase))
+                    {
+                        correctPredictionIndices.Add(i);
+                    }
+                }
+            }).ContinueWith((t) =>
+            {
+                //foreach (var idx in correctPredictionIndices)
+                //{
+                //    Dispatcher.Invoke(() =>
+                //    {
+                        
+                //    });
+                //}
+                Dispatcher.Invoke(() =>
+                {
+                    txt_main.Text = "Forest Ready";
+                    txt_btm.Text = "Waiting for test input...";
+
+                    txt_accuracy.Text = Math.Floor((correctPredictionIndices.Count / (double)rowCount) * 100d) + "%";
+                    txt_accuracy.FontSize = 40;
+                    btn_accuracy.IsEnabled = true;
+
+                    IsCheckingAccuracy = false;
+                });
+            });
         }
     }
 }

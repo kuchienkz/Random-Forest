@@ -10,28 +10,30 @@ namespace Project_Data_Mining.ObjectClass
 {
     public class Tree
     {
-
-        public string GraphVizInput;
         public readonly DataTable Dataset;
         public TreeNode Root { get; set; }
-        public static List<Attribute> AttributeCollection;
+        public static List<Feature> AttributeCollection;
         
         public Tree(DataTable dt)
         {
             Dataset = dt;
             Root = Learn(dt, "");
-            GraphVizInput = GenerateGraphVizInput(Root, "");
         }
 
         //Instance call
         public string Predict(DataRow dataInput)
         {
             var valuesForQuery = new Dictionary<string, string>();
-            for (int i = 0; i < Dataset.Columns.Count; i++)
+            for (int i = 0; i < Dataset.Columns.Count - 1; i++)
             {
-                valuesForQuery.Add(Dataset.Columns[i].ToString(), dataInput[i].ToString());
+                var input = dataInput[i].ToString();
+                var colName = Dataset.Columns[i].ColumnName;
+                if (CategoricalFactory.IsDescriptorExists(colName))
+                {
+                    input = CategoricalFactory.DescriptNumericalValue(input, colName);
+                }
+                valuesForQuery.Add(Dataset.Columns[i].ToString(), input);
             }
-
             return Predict(Root, valuesForQuery, "");
         }
 
@@ -82,6 +84,7 @@ namespace Project_Data_Mining.ObjectClass
                 }
 
                 var reducedTable = CreateSmallerTable(dt, val, root.TableIndex);
+
                 root.ChildNodes.Add(Learn(reducedTable, val));
             }
 
@@ -121,13 +124,7 @@ namespace Project_Data_Mining.ObjectClass
 
         private static DataTable CreateSmallerTable(DataTable dt, string edgePointingToNextNode, int rootTableIndex)
         {
-            var smallerDt = new DataTable();
-
-            // add column titles
-            for (var i = 0; i < dt.Columns.Count; i++)
-            {
-                smallerDt.Columns.Add(dt.Columns[i].ToString());
-            }
+            var smallerDt = dt.Clone();
 
             // add rows which contain edgePointingToNextNode to new datatable
             for (var i = 0; i < dt.Rows.Count; i++)
@@ -153,32 +150,44 @@ namespace Project_Data_Mining.ObjectClass
 
         private static TreeNode GetRootNode(DataTable dt, string edge)
         {
-            var attributes = new List<Attribute>();
+            var attributes = new List<Feature>();
             var highestInformationGainIndex = -1;
-            var highestInformationGain = double.MinValue;
-
-            // Get all names, amount of attributes and attributes for every column             
-            for (var i = 0; i < dt.Columns.Count - 1; i++)
+            var highestInformationGain = 0.0;
+            
+            try
             {
-                var distinctvalues = Attribute.GetDistinctAttributeValuesOfColumn(dt, i);
-                attributes.Add(new Attribute(dt.Columns[i].ToString(), distinctvalues));
-            }
-
-            // Calculate Entropy (S)
-            var tableEntropy = CalculateBaseEntropy(dt);
-
-            for (var i = 0; i < attributes.Count; i++)
-            {
-                attributes[i].InformationGain = CalculateInformationGain(dt, i, tableEntropy);
-                if (attributes[i].InformationGain > highestInformationGain)
+                // Get all names, amount of attributes and attributes for every column             
+                for (var i = 0; i < dt.Columns.Count - 1; i++)
                 {
-                    highestInformationGain = attributes[i].InformationGain;
-                    highestInformationGainIndex = i;
+                    var distinctvalues = Feature.GetDistinctValuesOfColumn(dt, i);
+                    attributes.Add(new Feature(dt.Columns[i].ToString(), distinctvalues));
                 }
-            }
 
-            AttributeCollection = attributes;
-            return new TreeNode(attributes[highestInformationGainIndex].Name, highestInformationGainIndex, attributes[highestInformationGainIndex], edge);
+                // Calculate Entropy (S)
+                var tableEntropy = CalculateBaseEntropy(dt);
+
+                for (var i = 0; i < attributes.Count; i++)
+                {
+                    var gain = CalculateInformationGain(dt, i, tableEntropy);
+                    if (gain > highestInformationGain)
+                    {
+                        attributes[i].InformationGain = gain;
+                        highestInformationGain = attributes[i].InformationGain;
+                        highestInformationGainIndex = i;
+                    }
+                }
+
+                if (highestInformationGainIndex == -1)
+                {
+                    highestInformationGainIndex = 0;
+                }
+                return new TreeNode(attributes[highestInformationGainIndex].Name, highestInformationGainIndex, attributes[highestInformationGainIndex], edge);
+            }
+            catch (Exception z)
+            {
+                Console.WriteLine(z.Message);
+                throw;
+            }
         }
 
         private static double CalculateInformationGain(DataTable dt, int colIndex, double baseEntropy)
@@ -214,7 +223,7 @@ namespace Project_Data_Mining.ObjectClass
                 else
                 {
                     //stepsForCalculation.Add(-p * Math.Log(p, 2) - secondDivision * Math.Log(secondDivision, 2));
-                    var calc = p_val * CalculateEntropy(p_val_label.Select(a => a.Value / (double)val.Occurences).ToArray());
+                    var calc = -p_val * CalculateEntropy(p_val_label.Select(a => a.Value / (double)val.Occurences).ToArray());
                     stepsForCalculation.Add(calc);
                 }
             }
@@ -230,7 +239,7 @@ namespace Project_Data_Mining.ObjectClass
 
             var cRows = dt.Rows.Count;
             var baseEntropy = CalculateEntropy(amountOfEachDistinctValue
-                .Select(val => val.Occurences / (double)cRows) // hitung peluang setiap value
+                .Select(val => val.Occurences / (double)cRows)
                 .ToArray());
 
             return baseEntropy;
@@ -239,24 +248,16 @@ namespace Project_Data_Mining.ObjectClass
         private static List<DistinctValue> GetAmountOfEachDistinctValue(DataTable dt, int indexOfColumnToCheck)
         {
             var foundValues = new List<DistinctValue>();
-            var distinctValues = GetDisticntValues(dt, indexOfColumnToCheck);
+            var distinctValues = Feature.GetDistinctValuesOfColumn(dt, indexOfColumnToCheck);
 
             foreach (var val in distinctValues)
             {
                 var occurence = 0;
-                //var x = 0;
-
                 for (var i = 0; i < dt.Rows.Count; i++)
                 {
                     if (dt.Rows[i][indexOfColumnToCheck].ToString().Equals(val))
                     {
                         occurence++;
-                        //var p = dt.Rows[i][indexOfColumnToCheck].ToString();
-                        //var q = dt.Rows[0][indexOfColumnToCheck];
-                        //if (p.Equals(q))
-                        //{
-                        //    x++;
-                        //}
                     }
                 }
 
@@ -267,35 +268,23 @@ namespace Project_Data_Mining.ObjectClass
             return foundValues;
         }
 
-        private static IEnumerable<string> GetDisticntValues(DataTable dt, int indexOfColumnToCheck)
+        public string GenerateGraphVizInput()
         {
-            var dVals = new SortedSet<string>();
-            
-            for (var j = 1; j < dt.Rows.Count; j++)
-            {
-                dVals.Add(dt.Rows[j][indexOfColumnToCheck].ToString());
-            }
-
-            return dVals;
+            return GenerateGraphVizInput(Root, "", "digraph { \n");
         }
 
-        private string GenerateGraphVizInput(TreeNode root, string edge)
+        private string GenerateGraphVizInput(TreeNode root, string edge, string g)
         {
-            var s = "digraph { \n";
             if (root.ChildNodes != null && root.ChildNodes.Count > 0)
             {
                 foreach (var n in root.ChildNodes)
                 {
-                    GenerateGraphVizInput(n, root.Edge.ToLower());
-                    s += "\"" + root.Name.ToUpper() + "\" -> \"" + n.Name.ToUpper() + "\"[label=\"" + n.Edge.ToLower() + "\"];\n";
+                    GenerateGraphVizInput(n, root.Edge.ToLower(), g);
+                    g += "\"" + root.Name.ToUpper() + "\" -> \"" + n.Name.ToUpper() + "\"[label=\"" + n.Edge.ToLower() + "\"];\n";
                 }
             }
-            else
-            {
 
-            }
-
-            return s + "}";
+            return g + "}";
         }
 
         private static double CalculateEntropy(params double[] p)

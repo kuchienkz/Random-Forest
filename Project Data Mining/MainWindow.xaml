@@ -6,7 +6,7 @@
         xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
         xmlns:local="clr-namespace:Project_Data_Mining"
         mc:Ignorable="d"
-        Title="Ensemble Method: Random Forest  -  Classification" Height="450" Width="800" Padding="10" WindowState="Maximized">
+        Title="Ensemble Method: Random Forest  -  Classification" Height="768" Width="1366" Padding="10" WindowState="Maximized">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="auto"/>
@@ -20,8 +20,8 @@
             <RowDefinition Height="1*"/>
         </Grid.RowDefinitions>
         <TextBlock x:Name="txt_main" Grid.Column="1" Grid.RowSpan="2" Margin="0,0,0,40" Text="..." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="50" FontWeight="Bold" TextAlignment="Center"/>
-        <TextBlock x:Name="txt_btm" Grid.Column="1" Height="25" Margin="5,0" Grid.Row="1" Grid.RowSpan="1" Text="Waiting for dataset..." HorizontalAlignment="Stretch" VerticalAlignment="Center" FontSize="15" FontWeight="Bold" TextAlignment="Center" FontStyle="Italic" Background="#FFD1FF9A"/>
-        
+        <TextBlock x:Name="txt_btm" Grid.Column="1" Height="25" Margin="5,0" Grid.Row="1" Grid.RowSpan="1" Text="Waiting for dataset..." HorizontalAlignment="Stretch" VerticalAlignment="Top" FontSize="15" FontWeight="Bold" TextAlignment="Center" FontStyle="Italic" Background="#FFD1FF9A"/>
+
         <GroupBox Header="CONFIGURATION" Padding="5" FontWeight="Bold" FontSize="16" MaxWidth="200">
             <StackPanel Orientation="Vertical">
                 <TextBlock Text="Number of Trees:" FontWeight="Bold" FontSize="15"/>
@@ -31,7 +31,13 @@
                 <TextBlock Text="Dataset:" FontWeight="Bold" FontSize="15"/>
                 <TextBox x:Name="tbx_dataset" IsReadOnly="True" Height="23" Background="#FFCEFF93" Foreground="Black" PreviewMouseLeftButtonUp="Tbx_dataset_PreviewMouseLeftButtonUp" FontSize="14"/>
 
-                <Button Content="Build Forest" x:Name="btn_rebuild" Height="30" Margin="6,10,6,3" Foreground="White" Background="#FF6AC100" FontSize="16" Click="Btn_rebuild_Click"/>
+                <Button Content="Build Forest" x:Name="btn_rebuild" Height="30" Margin="6,10,6,20" Foreground="White" Background="#FF6AC100" FontSize="16" Click="Btn_rebuild_Click"/>
+                <GroupBox Grid.Row="1" Header="ACCURACY"  Padding="5" FontWeight="Bold" FontSize="16" MaxWidth="200">
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock Text="---" x:Name="txt_accuracy" HorizontalAlignment="Center" FontSize="40"/>
+                        <Button Content="Check" x:Name="btn_accuracy" Height="25" Margin="6,10,6,0" Foreground="White" Background="#FF6AC100" FontSize="13" Click="Btn_accuracy_Click"/>
+                    </StackPanel>
+                </GroupBox>
             </StackPanel>
         </GroupBox>
         <GroupBox Grid.Column="2" Grid.RowSpan="4" Header="Manual Input" DockPanel.Dock="Top" FontSize="20" FontWeight="Bold" MinWidth="200">
@@ -49,10 +55,34 @@
             <ListView Background="#7FFFFFFF" x:Name="list_testSet" FontSize="18" SelectionMode="Single">
                 <ListView.View>
                     <GridView>
+                        <GridViewColumn Header="Test Result">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="-" Width="200">
+                                        <TextBlock.Style>
+                                            <Style TargetType="{x:Type TextBlock}">
+                                                <Setter Property="Background" Value="White"/>
+                                                <Setter Property="Foreground" Value="Black"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value="MATCH">
+                                                        <Setter Property="Background" Value="LightGreen"/>
+                                                        <Setter Property="Foreground" Value="Black"/>
+                                                    </Trigger>
+                                                    <Trigger Property="Text" Value="MISMATCH">
+                                                        <Setter Property="Background" Value="Red"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
                         <GridViewColumn Header="Action">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button x:Name="lvi_action" Content="Input" Click="Lvi_action_Click"/>
+                                    <Button x:Name="lvi_action" Content="Input" Click="Lvi_action_Click" Foreground="White" Background="#FF6AC100" FontSize="13"/>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
