@@ -17,23 +17,30 @@ namespace Project_Data_Mining
         public static event EventHandler OnCultivateStart;
         public event EventHandler OnCultivateFinished;
 
+        public DataTable dt;
         public List<Tree> Trees;
         public List<Feature> Attributes;
         public bool IsReady { get; set; }
         public string LastVoteResult { get; private set;}
+        private DataTable TestSet;
 
+        public double MinimumAccuracy;
         public int CountTree;
         public int BootstrapSampleSize;
-        public RandomForest(DataTable dataset, int jumlahTree, int ukuranSubsample)
+
+        public RandomForest(DataTable trainingSet, ref DataTable testSet, int jumlahTree, int ukuranSubsample, double minAccuracy)
         {
             Console.WriteLine("GENERATING FOREST...");
             IsReady = false;
             Trees = new List<Tree>();
+            dt = trainingSet;
+            TestSet = testSet;
+            MinimumAccuracy = minAccuracy > 1 ? minAccuracy / 100d : minAccuracy;
 
             CountTree = jumlahTree;
             BootstrapSampleSize = ukuranSubsample;
             
-            CultivateTrees(dataset).ContinueWith((t) => 
+            CultivateTrees().ContinueWith((t) => 
             {
                 IsReady = true;
                 OnCultivateFinished?.Invoke(this, EventArgs.Empty);
@@ -79,7 +86,18 @@ namespace Project_Data_Mining
             });
         }
         
-        private Task CultivateTrees(DataTable dt)
+        public void AddTrees(int addition)
+        {
+            CountTree += addition;
+            CultivateTrees().ContinueWith((t) =>
+            {
+                IsReady = true;
+                OnCultivateFinished?.Invoke(this, EventArgs.Empty);
+                Console.WriteLine("FOREST READY!");
+            }); ;
+        }
+
+        private Task CultivateTrees()
         {
             IsReady = false;
             OnCultivateStart?.Invoke(this, EventArgs.Empty);
@@ -91,9 +109,18 @@ namespace Project_Data_Mining
                     var sample = BootstrapResample(dt).Result;
                     try
                     {
-                        Trees.Add(new Tree(sample));
-                        OnCultivateProgress?.Invoke(Trees.Count, Trees.Count / (double)CountTree * 100d);
-                        Console.WriteLine("Cultivating trees........" + (Trees.Count) + " / " + CountTree);
+                        var nt = new Tree(sample);
+                        var acc = GetTreeAccuracy(nt);
+                        if (acc >= MinimumAccuracy)
+                        {
+                            Trees.Add(nt);
+                            OnCultivateProgress?.Invoke(Trees.Count, Trees.Count / (double)CountTree * 100d);
+                            Console.WriteLine("Cultivating trees........" + (Trees.Count) + " / " + CountTree);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Accuracy is " + acc + ", excluded.");
+                        }
                     }
                     catch (Exception e)
                     {
@@ -119,6 +146,22 @@ namespace Project_Data_Mining
 
                 return newDt;
             });
+        }
+
+        private double GetTreeAccuracy(Tree tree)
+        {
+            var correctPrediction = 0d;
+            foreach (DataRow t in TestSet.Rows)
+            {
+                var r = tree.Predict(t).Split(new string[] { "-->", "--" }, StringSplitOptions.None).Last().Trim(' '); ;
+                var r2 = t[TestSet.Columns.Count - 1].ToString();
+                if (r == r2)
+                {
+                    correctPrediction += 1;
+                }
+            }
+
+            return correctPrediction / TestSet.Rows.Count;
         }
 
         //public string GetLargestDOT_Tree()

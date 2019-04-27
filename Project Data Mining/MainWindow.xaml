@@ -38,6 +38,12 @@
                         <Button Content="Check" x:Name="btn_accuracy" Height="25" Margin="6,10,6,0" Foreground="White" Background="#FF6AC100" FontSize="13" Click="Btn_accuracy_Click"/>
                     </StackPanel>
                 </GroupBox>
+                <GroupBox Grid.Row="1" Header="Add Trees"  Padding="5" FontWeight="Bold" FontSize="16" MaxWidth="200">
+                    <StackPanel Orientation="Vertical">
+                        <TextBox Text="" x:Name="txt_addTrees" Height="23" Background="#FFCEFF93" Foreground="Black" PreviewTextInput="Tbx_numTrees_PreviewTextInput" FontSize="14"/>
+                        <Button Content="Add Trees" x:Name="btn_addTrees" Height="25" Margin="6,10,6,0" Foreground="White" Background="#FF6AC100" FontSize="13" Click="Btn_addTrees_Click"/>
+                    </StackPanel>
+                </GroupBox>
             </StackPanel>
         </GroupBox>
         <GroupBox Grid.Column="2" Grid.RowSpan="4" Header="Manual Input" DockPanel.Dock="Top" FontSize="20" FontWeight="Bold" MinWidth="200">

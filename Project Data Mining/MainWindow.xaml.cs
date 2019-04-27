@@ -104,9 +104,7 @@ namespace Project_Data_Mining
             txt_main.Text = "Growing trees...";
             txt_btm.Text = "...";
         }
-
-
-
+        
         // Main class events
         private void GenerateUI()
         {
@@ -301,7 +299,7 @@ namespace Project_Data_Mining
             var nTree = int.Parse(tbx_numTrees.Text.Replace(" ", "").TrimStart('0'));
             var nSample = int.Parse(tbx_numSamples.Text.Replace(" ", "").TrimStart('0'));
             RandomForest.OnCultivateStart += Forest_OnCultivateStart;
-            forest = new RandomForest(TrainingSet, nTree, nSample);
+            forest = new RandomForest(TrainingSet, ref TestSet, nTree, nSample, 0);
             forest.OnCultivateFinished += Forest_OnCultivateFinished;
             forest.OnCultivateProgress += Forest_OnCultivateProgress;
             forest.OnVotingProgress += Forest_OnVotingProgress;
@@ -375,6 +373,12 @@ namespace Project_Data_Mining
                     IsCheckingAccuracy = false;
                 });
             });
+        }
+
+        private void Btn_addTrees_Click(object sender, RoutedEventArgs e)
+        {
+            tbx_numTrees.Text = (int.Parse(txt_addTrees.Text) + forest.CountTree).ToString();
+            forest.AddTrees(int.Parse(txt_addTrees.Text));
         }
     }
 }

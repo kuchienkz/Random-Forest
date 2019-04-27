@@ -24,7 +24,7 @@ namespace Project_Data_Mining.ObjectClass
         public string Predict(DataRow dataInput)
         {
             var valuesForQuery = new Dictionary<string, string>();
-            for (int i = 0; i < Dataset.Columns.Count - 1; i++)
+            for (int i = 0; i < Dataset.Columns.Count - 1; i++) // exclude resolution column
             {
                 var input = dataInput[i].ToString();
                 var colName = Dataset.Columns[i].ColumnName;
