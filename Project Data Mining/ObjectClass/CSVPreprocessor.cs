@@ -104,7 +104,7 @@ namespace Project_Data_Mining.ObjectClass
             for (int i = 0; i < dt.Columns.Count; i++)
             {
                 var distinctVals = Feature.GetDistinctValuesOfColumn(dt, i);
-                if (distinctVals.Count > 10 && distinctVals.All(a => double.TryParse(a, out double ou)))
+                if (distinctVals.Count > 8 && distinctVals.All(a => double.TryParse(a, out double ou)))
                 {
                     // values are numerical, create descriptor
                     var descriptor = CategoricalFactory.GenerateEqualWidthBins(dt.Columns[i].ColumnName, distinctVals.Select(a => double.Parse(a)).ToArray());

@@ -12,12 +12,11 @@ namespace Project_Data_Mining.ObjectClass
     {
         public readonly DataTable Dataset;
         public TreeNode Root { get; set; }
-        public static List<Feature> AttributeCollection;
         
         public Tree(DataTable dt)
         {
             Dataset = dt;
-            Root = Learn(dt, "");
+            Root = Learn(Dataset, "");
         }
 
         //Instance call
@@ -58,7 +57,6 @@ namespace Project_Data_Mining.ObjectClass
                         if (childNode.Edge.ToUpper().Equals(entry.Value.ToUpper()) && root.Name.ToUpper().Equals(entry.Key.ToUpper()))
                         {
                             valuesForQuery.Remove(entry.Key);
-
                             return routeStr + Predict(childNode, valuesForQuery, $"{childNode.Edge.ToLower()} --> ");
                         }
                     }
@@ -76,7 +74,7 @@ namespace Project_Data_Mining.ObjectClass
         {
             var root = GetRootNode(dt, edgeName);
 
-            foreach (var val in root.NodeAttribute.DistinctAttributeValues)
+            foreach (var val in root.NodeFeature.DistinctAttributeValues)
             {
                 if (IsLeaf(root, dt, val))
                 {
@@ -96,7 +94,7 @@ namespace Project_Data_Mining.ObjectClass
             var isLeaf = true;
             var allEndValues = new List<string>();
 
-            // get all leaf values for the attribute in question
+            // get all leaf values for the attribute
             for (var i = 0; i < dt.Rows.Count; i++)
             {
                 var s = dt.Rows[i][root.TableIndex].ToString();
@@ -268,31 +266,12 @@ namespace Project_Data_Mining.ObjectClass
             return foundValues;
         }
 
-        public string GenerateGraphVizInput()
-        {
-            return GenerateGraphVizInput(Root, "", "digraph { \n");
-        }
-
-        private string GenerateGraphVizInput(TreeNode root, string edge, string g)
-        {
-            if (root.ChildNodes != null && root.ChildNodes.Count > 0)
-            {
-                foreach (var n in root.ChildNodes)
-                {
-                    GenerateGraphVizInput(n, root.Edge.ToLower(), g);
-                    g += "\"" + root.Name.ToUpper() + "\" -> \"" + n.Name.ToUpper() + "\"[label=\"" + n.Edge.ToLower() + "\"];\n";
-                }
-            }
-
-            return g + "}";
-        }
-
         private static double CalculateEntropy(params double[] p)
         {
             double r = 0.0;
             foreach (var z in p)
             {
-                r += -(z * Math.Log(z, p.Length));
+                r += -(z * Math.Log(z, 2));
             }
             return double.IsNaN(r) ? 0 : r;
                    

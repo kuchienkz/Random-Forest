@@ -8,11 +8,11 @@ namespace Project_Data_Mining.ObjectClass
 {
     public class TreeNode
     {
-        public TreeNode(string name, int tableIndex, Feature nodeAttribute, string edge)
+        public TreeNode(string name, int tableIndex, Feature nodeFeature, string edge)
         {
             Name = name;
             TableIndex = tableIndex;
-            NodeAttribute = nodeAttribute;
+            NodeFeature = nodeFeature;
             ChildNodes = new List<TreeNode>();
             Edge = edge;
         }
@@ -28,7 +28,7 @@ namespace Project_Data_Mining.ObjectClass
 
         public string Edge { get; }
 
-        public Feature NodeAttribute { get; }
+        public Feature NodeFeature { get; }
 
         public List<TreeNode> ChildNodes { get; }
 

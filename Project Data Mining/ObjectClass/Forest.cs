@@ -10,6 +10,8 @@ namespace Project_Data_Mining
 {
     public class RandomForest
     {
+        private static Random r = new Random();
+
         public delegate void CultivateProgress(int treeDone, double percentage);
         public delegate void VotingProgress(int voteDone, double percentage);
         public event CultivateProgress OnCultivateProgress;
@@ -136,7 +138,6 @@ namespace Project_Data_Mining
             {
                 var count = originalDataset.Rows.Count;
                 DataTable newDt = originalDataset.Clone();
-                Random r = new Random();
                 for (int i = 0; i < BootstrapSampleSize; i++)
                 {
                     var idx = r.Next(count);
@@ -164,19 +165,6 @@ namespace Project_Data_Mining
             return correctPrediction / TestSet.Rows.Count;
         }
 
-        //public string GetLargestDOT_Tree()
-        //{
-        //    var longest = "";
-        //    foreach (var t in Trees)
-        //    {
-        //        var a = t.GenerateGraphVizInput();
-        //        if (a.Length > longest.Length)
-        //        {
-        //            longest = a;
-        //        }
-        //    }
-
-        //    return longest;
-        //}
+       
     }
 }
